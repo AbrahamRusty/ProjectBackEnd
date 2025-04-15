@@ -1,6 +1,6 @@
 const usersService = require('./users-service');
 const { errorResponder, errorTypes } = require('../../../core/errors');
-const { hashPassword } = require('../../../utils/password');
+const { hashPassword } = require('../../../src/UTILS/password');
 
 async function getUsers(request, response, next) {
   try {
