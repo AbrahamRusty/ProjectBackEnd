@@ -1,31 +1,47 @@
-const { Users } = require('../../../MODELS');
+const User = require('../../../models/user'); 
 
-async function getUsers() {
-  return Users.find({});
+async function getUsers(limit = 0, sort = 1) {
+  return User.find()
+    .select('-_id')
+    .limit(limit)
+    .sort({ id: sort });
 }
 
 async function getUser(id) {
-  return Users.findById(id);
+  return User.findOne({ id: parseInt(id) }).select('-_id');
 }
 
 async function getUserByEmail(email) {
-  return Users.findOne({ email });
+  return User.findOne({ email });
 }
 
-async function createUser(email, password, fullName) {
-  return Users.create({ email, password, fullName });
+async function createUser(userData) {
+  const userCount = await User.countDocuments();
+
+  const newUser = new User({
+    id: userCount + 1,
+    ...userData,
+  });
+
+  return newUser.save();
 }
 
-async function updateUser(id, email, fullName) {
-  return Users.updateOne({ _id: id }, { $set: { email, fullName } });
+async function updateUser(id, updatedFields) {
+  return User.updateOne(
+    { id: parseInt(id) },
+    { $set: updatedFields }
+  );
 }
 
-async function changePassword(id, password) {
-  return Users.updateOne({ _id: id }, { $set: { password } });
+async function changePassword(id, hashedPassword) {
+  return User.updateOne(
+    { id: parseInt(id) },
+    { $set: { password: hashedPassword } }
+  );
 }
 
 async function deleteUser(id) {
-  return Users.deleteOne({ _id: id });
+  return User.deleteOne({ id: parseInt(id) });
 }
 
 module.exports = {
