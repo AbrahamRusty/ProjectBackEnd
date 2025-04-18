@@ -1,6 +1,6 @@
 module.exports = (db) =>
   db.model(
-    'Books',
+    'Products',
     db.Schema({
       title: String,
     })
