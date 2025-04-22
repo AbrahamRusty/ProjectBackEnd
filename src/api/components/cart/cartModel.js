@@ -1,13 +1,22 @@
 const mongoose = require('mongoose');
 
 const cartSchema = new mongoose.Schema({
-    id: { type: Number, required: true }, // ID unik untuk cart
-    userId: { type: Number, ref: 'User', required: true }, // Referensi ke User
-    date: { type: Date, required: true }, // Tanggal pembuatan cart
+    id: { type: Number,
+         required: true },
+
+    userId: { type: Number,
+              ref: 'User',
+              required: true },
+
+    date: { type: Date,
+            required: true }, 
     products: [
         {
-            productId: { type: Number, ref: 'Product', required: true }, // Referensi ke Product
-            quantity: { type: Number, required: true } // Jumlah produk
+            productId: { type: Number,
+                         ref: 'Product',
+                         required: true }, 
+            quantity: { type: Number,
+                        required: true } 
         }
     ]
 });

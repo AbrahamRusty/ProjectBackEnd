@@ -8,61 +8,62 @@ mongoose.connect(process.env.MONGODB_URI, {
 .then(() => console.log('Connected to MongoDB'))
 .catch(err => console.error('MongoDB connection error:', err));
 
-// GET all carts
+// ambil semua cart
 exports.getAllCarts = async (req, res) => {
     try {
         const carts = await Cart.find();
         res.status(200).json(carts);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching carts', error });
+        res.status(500).json({ message: 'Gagal mengambil data cart', error });
     }
 };
 
-// GET a single cart by ID
+// ambil satu cart
 exports.getSingleCart = async (req, res) => {
     try {
         const cart = await Cart.findById(req.params.id);
-        if (!cart) return res.status(404).json({ message: 'Cart not found' });
+        if (!cart) return res.status(404).json({ message: 'Cart tidak ditemukan' });
         res.status(200).json(cart);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching cart', error });
+        res.status(500).json({ message: 'Gagal mengambil cart', error });
     }
 };
 
-// POST a new cart
+// POST cart baru
 exports.addCart = async (req, res) => {
     try {
         const { id, userId, date, products } = req.body;
 
-        // Buat dokumen baru
         const newCart = new Cart({ id, userId, date, products });
         const savedCart = await newCart.save();
 
-        res.status(201).json({ message: 'Cart created', cart: savedCart });
+        res.status(201).json({ message: 'Cart dibuat.', cart: savedCart });
     } catch (error) {
-        console.error('Error creating cart:', error); // Tambahkan log error
-        res.status(500).json({ message: 'Error creating cart', error });
+        console.error('Gagal membuat cart' , error); 
+        res.status(500).json({ message: 'Terjadi kesalahan', error });
     }
 };
 
-// PUT to update a cart
+// update cart
 exports.editCart = async (req, res) => {
     try {
         const updatedCart = await Cart.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        if (!updatedCart) return res.status(404).json({ message: 'Cart not found' });
-        res.status(200).json({ message: 'Cart updated', cart: updatedCart });
+        if (!updatedCart) return res.status(404).json({ message: 'Cart tidak ada' });
+        res.status(200).json({ message: 'Cart diperbarui', cart: updatedCart });
     } catch (error) {
-        res.status(500).json({ message: 'Error updating cart', error });
+        res.status(500).json({ message: 'Gagal memperbarui cart', error });
     }
 };
 
-// DELETE a cart
+// hapus cart
 exports.deleteCart = async (req, res) => {
     try {
         const deletedCart = await Cart.findByIdAndDelete(req.params.id);
-        if (!deletedCart) return res.status(404).json({ message: 'Cart not found' });
-        res.status(200).json({ message: 'Cart deleted', cart: deletedCart });
+
+        if (!deletedCart) return res.status(404).json({ message: 'Cart tidak ada' });
+        res.status(200).json({ message: 'Cart dihapus', cart: deletedCart });
+        
     } catch (error) {
-        res.status(500).json({ message: 'Error deleting cart', error });
+        res.status(500).json({ message: 'gagal menghapus cart', error });
     }
 };

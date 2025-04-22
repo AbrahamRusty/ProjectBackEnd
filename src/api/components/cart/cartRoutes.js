@@ -2,19 +2,19 @@ const express = require('express');
 const router = express.Router();
 const cartController = require('./cartController');
 
-// GET all carts
+// Ambil semua cart
 router.get('/', cartController.getAllCarts);
 
-// GET a single cart by ID
+// Ambil cart berdasarkan id
 router.get('/:id', cartController.getSingleCart);
 
-// POST a new cart
+// Menambah cart
 router.post('/', cartController.addCart);
 
-// PUT to update a cart
+// update cart
 router.put('/:id', cartController.editCart);
 
-// DELETE a cart
+// hapus cart
 router.delete('/:id', cartController.deleteCart);
 
 module.exports = router;
