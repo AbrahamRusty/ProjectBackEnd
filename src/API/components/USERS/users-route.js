@@ -1,27 +1,11 @@
 const express = require('express');
+const router = express.Router();
+const userController = require('./users-controller');
 
-const usersController = require('./users-controller');
+router.get('/', userController.getAllUsers);
+router.get('/:id', userController.getUserById);
+router.post('/', userController.createUser);
+router.put('/:id', userController.updateUser);
+router.delete('/:id', userController.deleteUser);
 
-const route = express.Router();
-
-module.exports = (app) => {
-  app.use('/users', route);
-
-  // Get list of users
-  route.get('/', usersController.getUsers);
-
-  // Create a new user
-  route.post('/', usersController.createUser);
-
-  // Get user detail
-  route.get('/:id', usersController.getUser);
-
-  // Update user
-  route.put('/:id', usersController.updateUser);
-  
-  // Change password
-  route.put('/:id/change-password', usersController.changePassword);
-  
-  // Delete user
-  route.delete('/:id', usersController.deleteUser);
-};
+module.exports = router; 

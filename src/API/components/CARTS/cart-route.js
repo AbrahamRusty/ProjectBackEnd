@@ -1,29 +1,11 @@
-
 const express = require('express');
-const cartsController = require('./cart-controller');
+const router = express.Router();
+const cartController = require('./cart-controller');
 
-const route = express.Router();
+router.get('/', cartController.getCarts);
+router.get('/:id', cartController.getCartById);
+router.post('/', cartController.addCart);
+router.put('/:id', cartController.updateCart);
+router.delete('/:id', cartController.deleteCart);
 
-module.exports = (app) => {
-  app.use('/carts', route);
-
-  // Get all carts with optional filter/sort
-  route.get('/', cartsController.getAllCarts);
-
-  // Get a cart by id
-  route.get('/:id', cartsController.getSingleCart);
-
-  // Get carts by userId
-  route.get('/user/:userid', cartsController.getCartsByUserId);
-
-  // Create a new cart
-  route.post('/', cartsController.addCart);
-
-  // Update a cart
-  route.put('/:id', cartsController.editCart);
-  route.patch('/:id', cartsController.editCart);
-
-  // Delete a cart
-  route.delete('/:id', cartsController.deleteCart);
-};
-
+module.exports = router;

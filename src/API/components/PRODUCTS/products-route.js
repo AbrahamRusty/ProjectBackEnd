@@ -1,21 +1,23 @@
 const express = require('express');
+const router = express.Router();
+const productController = require('./products-controller');
 
-const booksController = require('./books-controller');
+// Get all products with optional limit and sort
+router.get('/', productController.getAllProducts);
 
-const route = express.Router();
+// Get products by category - Must be before /:id to avoid conflict
+router.get('/category/:categoryName', productController.getProductsByCategory);
 
-module.exports = (app) => {
-  app.use('/books', route);
+// Get specific product by ID
+router.get('/:id', productController.getProduct);
 
-  // Get list of books
-  route.get('/', booksController.getBooks);
+// Create new product
+router.post('/', productController.createProduct);
 
-  // Create a new book
-  route.post('/', booksController.createBook);
+// Update product
+router.put('/:id', productController.updateProduct);
 
-  // TODO: Get a book by id
+// Delete product
+router.delete('/:id', productController.deleteProduct);
 
-  // TODO: Update a book by id
-
-  // TODO: Delete a book by id
-};
+module.exports = router;

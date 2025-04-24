@@ -1,55 +1,42 @@
-const User = require('../../../models/user'); 
+// src/api/components/user/user-repository.js
+const User = require('./user-model');
 
-async function getUsers(limit = 0, sort = 1) {
-  return User.find()
-    .select('-_id')
-    .limit(limit)
-    .sort({ id: sort });
-}
+// Dapatkan semua user
+const getAllUsers = async () => {
+  return await User.find();
+};
 
-async function getUser(id) {
-  return User.findOne({ id: parseInt(id) }).select('-_id');
-}
+// Dapatkan user berdasarkan ID
+const getUserById = async (id) => {
+  return await User.findById(id);
+};
 
-async function getUserByEmail(email) {
-  return User.findOne({ email });
-}
+// Cari user berdasarkan email (bisa untuk login)
+const getUserByEmail = async (email) => {
+  return await User.findOne({ email });
+};
 
-async function createUser(userData) {
-  const userCount = await User.countDocuments();
+// Buat user baru
+const createUser = async (userData) => {
+  const user = new User(userData);
+  return await user.save();
+};
 
-  const newUser = new User({
-    id: userCount + 1,
-    ...userData,
-  });
+// Perbarui user
+const updateUser = async (id, updateData) => {
+  return await User.findByIdAndUpdate(id, updateData, { new: true });
+};
 
-  return newUser.save();
-}
-
-async function updateUser(id, updatedFields) {
-  return User.updateOne(
-    { id: parseInt(id) },
-    { $set: updatedFields }
-  );
-}
-
-async function changePassword(id, hashedPassword) {
-  return User.updateOne(
-    { id: parseInt(id) },
-    { $set: { password: hashedPassword } }
-  );
-}
-
-async function deleteUser(id) {
-  return User.deleteOne({ id: parseInt(id) });
-}
+// Hapus user
+const deleteUser = async (id) => {
+  return await User.findByIdAndDelete(id);
+};
 
 module.exports = {
-  getUsers,
-  getUser,
+  getAllUsers,
+  getUserById,
   getUserByEmail,
   createUser,
   updateUser,
-  changePassword,
   deleteUser,
 };

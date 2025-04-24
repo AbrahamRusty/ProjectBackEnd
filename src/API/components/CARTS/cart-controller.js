@@ -1,110 +1,261 @@
-const cartsService = require('./cart-service');
-const { errorResponder, errorTypes } = require('../../../CORE/errors');
+const Cart = require('./cart-model');
+const User = require('../USERS/users-model');
+const Product = require('../PRODUCTS/products-model');
+const mongoose = require('mongoose');
 
-async function getAllCarts(request, response, next) {
-  try {
-    const limit = Number(request.query.limit) || 0;
-    const sort = request.query.sort === 'desc' ? -1 : 1;
-    const startDate = request.query.startdate || '1970-01-01';
-    const endDate = request.query.enddate || new Date();
+exports.addCart = async (req, res) => {
+    try {
+        const { user_id, product_id, quantity } = req.body;
 
-    const carts = await cartsService.getAllCarts(limit, sort, startDate, endDate);
-    return response.status(200).json(carts);
-  } catch (error) {
-    return next(errorResponder(errorTypes.DB, error.message));
-  }
-}
+        // Validate ObjectIds
+        if (!mongoose.Types.ObjectId.isValid(user_id) || !mongoose.Types.ObjectId.isValid(product_id)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Invalid user_id or product_id format'
+            });
+        }
 
-async function getCartsByUserId(request, response, next) {
-  try {
-    const userId = request.params.userid;
-    const startDate = request.query.startdate || '1970-01-01';
-    const endDate = request.query.enddate || new Date();
+        // Check if user exists
+        const user = await User.findById(user_id);
+        if (!user) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'User not found'
+            });
+        }
 
-    const carts = await cartsService.getCartsByUserId(userId, startDate, endDate);
-    return response.status(200).json(carts);
-  } catch (error) {
-    return next(errorResponder(errorTypes.DB, error.message));
-  }
-}
+        // Check if product exists and get details
+        const product = await Product.findById(product_id);
+        if (!product) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Product not found'
+            });
+        }
 
-async function getSingleCart(request, response, next) {
-  try {
-    const cartId = request.params.id;
-    const cart = await cartsService.getSingleCart(cartId);
+        // Calculate total price
+        const totalPrice = product.price * quantity;
 
-    if (!cart) {
-      throw errorResponder(errorTypes.NOT_FOUND, 'Cart not found');
+        // Create new cart
+        const cart = new Cart({
+            userId: user_id,
+            products: [{
+                productId: product_id,
+                quantity: quantity,
+                price: product.price
+            }],
+            totalAmount: totalPrice
+        });
+
+        await cart.save();
+
+        // Populate cart with user and product details
+        const populatedCart = await Cart.findById(cart._id)
+            .populate('userId', 'username email name')  // Include name field
+            .populate('products.productId', 'title price');
+
+        res.status(201).json({
+            status: 'success',
+            data: {
+                cart: {
+                    _id: populatedCart._id,
+                    user: {
+                        _id: populatedCart.userId._id,
+                        username: populatedCart.userId.username,
+                        email: populatedCart.userId.email,
+                        name: populatedCart.userId.name  // User's name included
+                    },
+                    products: populatedCart.products.map(item => ({
+                        product: {
+                            _id: item.productId._id,
+                            title: item.productId.title,
+                            price: item.price
+                        },
+                        quantity: item.quantity,
+                        subtotal: item.price * item.quantity
+                    })),
+                    totalAmount: populatedCart.totalAmount,
+                    created_at: populatedCart.created_at
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Cart creation error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to create cart',
+            error: error.message
+        });
     }
+};
 
-    return response.status(200).json(cart);
-  } catch (error) {
-    return next(error);
-  }
-}
+// Get all carts
+exports.getCarts = async (req, res) => {
+    try {
+        const carts = await Cart.aggregate([
+            {
+                $lookup: {
+                    from: 'products',
+                    localField: 'product_id',
+                    foreignField: '_id',
+                    as: 'product'
+                }
+            },
+            { $unwind: '$product' },
+            {
+                $project: {
+                    user_id: 1,
+                    product_name: '$product.name',
+                    product_price: '$product.price',
+                    quantity: 1,
+                    total_price: { $multiply: ['$quantity', '$product.price'] },
+                    created_at: 1
+                }
+            }
+        ]);
 
-async function addCart(request, response, next) {
-  try {
-    const { userId, date, products } = request.body;
-
-    if (!userId || !date || !products) {
-      throw errorResponder(errorTypes.EMPTY_BODY, 'All fields are required');
+        res.status(200).json({
+            status: 'success',
+            data: carts
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
     }
+};
 
-    const newCart = await cartsService.addCart(userId, date, products);
-    return response.status(201).json(newCart);
-  } catch (error) {
-    return next(errorResponder(errorTypes.DB, error.message));
-  }
-}
+// Get cart by ID
+exports.getCartById = async (req, res) => {
+    try {
+        const { id } = req.params;
 
-async function editCart(request, response, next) {
-  try {
-    const cartId = parseInt(request.params.id);
-    const { userId, date, products } = request.body;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Invalid cart ID'
+            });
+        }
 
-    if (!userId || !date || !products) {
-      throw errorResponder(errorTypes.EMPTY_BODY, 'All fields are required');
+        const cart = await Cart.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(id) } },
+            {
+                $lookup: {
+                    from: 'products',
+                    localField: 'product_id',
+                    foreignField: '_id',
+                    as: 'product'
+                }
+            },
+            { $unwind: '$product' },
+            {
+                $project: {
+                    user_id: 1,
+                    product_name: '$product.name',
+                    product_price: '$product.price',
+                    quantity: 1,
+                    total_price: { $multiply: ['$quantity', '$product.price'] },
+                    created_at: 1
+                }
+            }
+        ]);
+
+        if (!cart.length) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Cart not found'
+            });
+        }
+
+        res.status(200).json({
+            status: 'success',
+            data: cart[0]
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
     }
+};
 
-    const success = await cartsService.editCart(cartId, userId, date, products);
+// Update cart
+exports.updateCart = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { quantity } = req.body;
 
-    if (!success) {
-      throw errorResponder(errorTypes.UNPROCESSABLE_ENTITY, 'Failed to update cart');
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Invalid cart ID'
+            });
+        }
+
+        const cart = await Cart.findById(id);
+        if (!cart) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Cart not found'
+            });
+        }
+
+        const product = await Product.findById(cart.product_id);
+        cart.quantity = quantity;
+        const updatedCart = await cart.save();
+
+        res.status(200).json({
+            status: 'success',
+            data: {
+                id: updatedCart._id,
+                user_id: updatedCart.user_id,
+                product_details: {
+                    name: product.name,
+                    price: product.price,
+                    quantity: updatedCart.quantity,
+                    total_price: product.price * updatedCart.quantity
+                },
+                created_at: updatedCart.created_at
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
     }
+};
 
-    return response.status(200).json({ message: 'Cart updated successfully' });
-  } catch (error) {
-    return next(error);
-  }
-}
+// Delete cart
+exports.deleteCart = async (req, res) => {
+    try {
+        const { id } = req.params;
 
-async function deleteCart(request, response, next) {
-  try {
-    const cartId = request.params.id;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Invalid cart ID'
+            });
+        }
 
-    const cart = await cartsService.getSingleCart(cartId);
-    if (!cart) {
-      throw errorResponder(errorTypes.NOT_FOUND, 'Cart not found');
+        const cart = await Cart.findByIdAndDelete(id);
+        if (!cart) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Cart not found'
+            });
+        }
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Cart deleted successfully'
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
     }
-
-    const success = await cartsService.deleteCart(cartId);
-
-    if (!success) {
-      throw errorResponder(errorTypes.UNPROCESSABLE_ENTITY, 'Failed to delete cart');
-    }
-
-    return response.status(200).json({ message: 'Cart deleted successfully' });
-  } catch (error) {
-    return next(error);
-  }
-}
-
-module.exports = {
-  getAllCarts,
-  getCartsByUserId,
-  getSingleCart,
-  addCart,
-  editCart,
-  deleteCart,
 };

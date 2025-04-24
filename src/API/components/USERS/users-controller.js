@@ -1,145 +1,52 @@
-const usersService = require('./users-service');
-const { errorResponder, errorTypes } = require('../../../core/errors');
-const { hashPassword } = require('../../../src/UTILS/password');
+// src/api/components/user/user-controller.js
 
-async function getUsers(req, res, next) {
+const User = require('./users-model');
+
+exports.getAllUsers = async (req, res) => {
   try {
-    const limit = Number(req.query.limit) || 0;
-    const sort = req.query.sort === 'desc' ? -1 : 1;
-
-    const users = await usersService.getUsers(limit, sort);
-
-    return res.status(200).json(users);
+    const users = await User.find();
+    res.json(users);
   } catch (error) {
-    return next(error);
+    res.status(500).json({ message: error.message });
   }
-}
+};
 
-async function getUser(req, res, next) {
+exports.getUserById = async (req, res) => {
   try {
-    const user = await usersService.getUser(req.params.id);
-
-    if (!user) {
-      throw errorResponder(errorTypes.UNPROCESSABLE_ENTITY, 'User not found');
-    }
-
-    return res.status(200).json(user);
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
   } catch (error) {
-    return next(error);
+    res.status(500).json({ message: error.message });
   }
-}
+};
 
-async function createUser(req, res, next) {
+exports.createUser = async (req, res) => {
+  const user = new User(req.body);
   try {
-    const {
-      email,
-      username,
-      password,
-      confirm_password: confirmPassword,
-      firstname,
-      lastname,
-      address,
-      phone,
-    } = req.body;
-
-    if (!email || !username || !password || !firstname || !lastname || !address || !phone) {
-      throw errorResponder(errorTypes.VALIDATION_ERROR, 'Missing required fields');
-    }
-
-    if (await usersService.emailExists(email)) {
-      throw errorResponder(errorTypes.EMAIL_ALREADY_TAKEN, 'Email already exists');
-    }
-
-    if (password.length < 8) {
-      throw errorResponder(errorTypes.VALIDATION_ERROR, 'Password must be at least 8 characters long');
-    }
-
-    if (password !== confirmPassword) {
-      throw errorResponder(errorTypes.VALIDATION_ERROR, 'Password and confirm password do not match');
-    }
-
-    const hashedPassword = await hashPassword(password);
-
-    const success = await usersService.createUser({
-      email,
-      username,
-      password: hashedPassword,
-      name: { firstname, lastname },
-      address,
-      phone,
-    });
-
-    if (!success) {
-      throw errorResponder(errorTypes.UNPROCESSABLE_ENTITY, 'Failed to create user');
-    }
-
-    return res.status(201).json({ message: 'User created successfully' });
+    const newUser = await user.save();
+    res.status(201).json(newUser);
   } catch (error) {
-    return next(error);
+    res.status(400).json({ message: error.message });
   }
-}
+};
 
-async function updateUser(req, res, next) {
+exports.updateUser = async (req, res) => {
   try {
-    const id = req.params.id;
-    const {
-      email,
-      username,
-      firstname,
-      lastname,
-      address,
-      phone,
-    } = req.body;
-
-    const user = await usersService.getUser(id);
-    if (!user) {
-      throw errorResponder(errorTypes.UNPROCESSABLE_ENTITY, 'User not found');
-    }
-
-    if (!email || !username || !firstname || !lastname || !address || !phone) {
-      throw errorResponder(errorTypes.VALIDATION_ERROR, 'Missing required fields');
-    }
-
-    if (email !== user.email && (await usersService.emailExists(email))) {
-      throw errorResponder(errorTypes.EMAIL_ALREADY_TAKEN, 'Email already exists');
-    }
-
-    const success = await usersService.updateUser(id, {
-      email,
-      username,
-      name: { firstname, lastname },
-      address,
-      phone,
-    });
-
-    if (!success) {
-      throw errorResponder(errorTypes.UNPROCESSABLE_ENTITY, 'Failed to update user');
-    }
-
-    return res.status(200).json({ message: 'User updated successfully' });
+    const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
   } catch (error) {
-    return next(error);
+    res.status(400).json({ message: error.message });
   }
-}
+};
 
-async function deleteUser(req, res, next) {
+exports.deleteUser = async (req, res) => {
   try {
-    const success = await usersService.deleteUser(req.params.id);
-
-    if (!success) {
-      throw errorResponder(errorTypes.UNPROCESSABLE_ENTITY, 'Failed to delete user');
-    }
-
-    return res.status(200).json({ message: 'User deleted successfully' });
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ message: 'User deleted' });
   } catch (error) {
-    return next(error);
+    res.status(500).json({ message: error.message });
   }
-}
-
-module.exports = {
-  getUsers,
-  getUser,
-  createUser,
-  updateUser,
-  deleteUser,
 };
